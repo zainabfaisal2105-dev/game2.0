@@ -1,0 +1,6 @@
+{
+  "name": "Liminal Space Escape",
+  "description": "A first-person 3D atmospheric survival game exploring uncanny liminal spaces across progressive stages, solving spatial puzzles while evading stalking corridor entities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
