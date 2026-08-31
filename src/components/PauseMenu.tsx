@@ -204,43 +204,93 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
           {activeTab === 'entities' && (
             <div className="space-y-3">
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
-                <div className="text-yellow-400 font-mono font-bold text-xs uppercase tracking-wider">
-                  1. The Lurker (Mono-Yellow Backrooms)
+                <div className="text-yellow-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>1. The Lurker (Mono-Yellow Backrooms)</span>
+                  <span className="text-[10px] text-yellow-300 font-bold px-2 py-0.5 rounded bg-yellow-400/10 border border-yellow-400/30">TWIST: BLINDING SPOTLIGHT</span>
                 </div>
                 <p className="text-white/70 leading-relaxed">
                   Appears in dark intersections with a gaping luminescent grin. Freezes and retreats
-                  when spotlighted by the flashlight. Do NOT turn your back and sprint; back away slowly.
+                  when spotlighted by the flashlight beam. Do NOT turn your back and sprint; back away slowly into open corridors.
                 </p>
               </div>
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
-                <div className="text-blue-400 font-mono font-bold text-xs uppercase tracking-wider">
-                  2. The Murmur Hound (The Submerged Baths)
+                <div className="text-cyan-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>2. The Murmur Hound (The Submerged Baths)</span>
+                  <span className="text-[10px] text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-400/10 border border-cyan-400/30">TWIST: ACOUSTIC WATER DECOY</span>
                 </div>
                 <p className="text-white/70 leading-relaxed">
-                  Quadrupedal aquatic crawler. Nearly blind, but possesses acute acoustic echolocation.
-                  Loud water splashes from sprinting will draw it from across the poolrooms. Crouch
-                  to move silently.
+                  100% blind aquatic crawler! Has no eyes and relies purely on acoustic ripples. Sprinting creates loud water splashes that lure it from across the baths. Crouch to wade silently. While crouched, press [F] to drop an acoustic water ripple decoy to lure it away!
                 </p>
               </div>
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
-                <div className="text-rose-400 font-mono font-bold text-xs uppercase tracking-wider">
-                  3. The Bellhop Shade (Corridor 404 Hotel)
+                <div className="text-fuchsia-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>3. The Display Mannequin (Sunset Galleria Mall)</span>
+                  <span className="text-[10px] text-fuchsia-300 font-bold px-2 py-0.5 rounded bg-fuchsia-400/10 border border-fuchsia-400/30">TWIST: GENERATOR BROWNOUT</span>
                 </div>
                 <p className="text-white/70 leading-relaxed">
-                  Tall uniformed entity carrying a swinging amber lantern. Breaks off pursuit if you
-                  duck into room alcoves and extinguish your light before it sweeps the corridor.
+                  Quantum weeping angel! Freezes solid when directly observed in your field of view. However, every ~22 seconds the mall generator suffers a brownout surge, causing a 2.6-second blackout where it can move freely even if you look at it!
                 </p>
               </div>
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
-                <div className="text-red-400 font-mono font-bold text-xs uppercase tracking-wider">
-                  4. The Stalker - Entity 27 (Concrete Tunnels)
+                <div className="text-emerald-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>4. The Orderly (Ward 4 Hospital)</span>
+                  <span className="text-[10px] text-emerald-300 font-bold px-2 py-0.5 rounded bg-emerald-400/10 border border-emerald-400/30">TWIST: PHOTOPHOBIC RAGE</span>
                 </div>
                 <p className="text-white/70 leading-relaxed">
-                  Fast, relentless mechanical predator. Turns corners aggressively. Break line of
-                  sight around 90-degree pipe junctions immediately upon hearing its metallic scrape.
+                  Reverse-Smiler! Flashlight light enrages the Orderly into a shrieking charge. Keep your flashlight extinguished [F] and navigate by green emergency signage to slip past undetected. Listen to the cardiac ECG monitor beeps to judge his proximity!
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
+                <div className="text-amber-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>5. The Hall Monitor (Meadowbrook School)</span>
+                  <span className="text-[10px] text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/30">TWIST: PA BELL SWEEP</span>
+                </div>
+                <p className="text-white/70 leading-relaxed">
+                  Every 28 seconds the PA school bell rings, triggering a high-speed hallway sweep. Standing in corridors will get you caught immediately. Duck into classroom alcoves or crouch beneath desks until the bell chime fades.
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
+                <div className="text-slate-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>6. The Overtime Worker (Corporate Office)</span>
+                  <span className="text-[10px] text-slate-300 font-bold px-2 py-0.5 rounded bg-white/10 border border-white/30">TWIST: RINGING DESK PHONES</span>
+                </div>
+                <p className="text-white/70 leading-relaxed">
+                  The Manager guards the Server Room junction. When a rotary desk telephone rings in the cubicle bays, approach and press [E] to answer it, luring the Manager to the phone for 12 seconds to clear your path!
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
+                <div className="text-rose-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>7. The Bellhop Shade (Corridor 404 Hotel)</span>
+                  <span className="text-[10px] text-rose-300 font-bold px-2 py-0.5 rounded bg-rose-400/10 border border-rose-400/30">TWIST: ELEVATOR TRANSLOCATION</span>
+                </div>
+                <p className="text-white/70 leading-relaxed">
+                  A brass elevator chime signals the Concierge stepping through Room 404 doors to translocate across wings. Warning: staring directly into the swinging amber lantern light rapidly drains your psychological sanity—look down at the carpet to avert your gaze!
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
+                <div className="text-red-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>8. The Stalker - Entity 27 (Concrete Tunnels)</span>
+                  <span className="text-[10px] text-red-300 font-bold px-2 py-0.5 rounded bg-red-400/10 border border-red-400/30">TWIST: BOILER STEAM PURGES</span>
+                </div>
+                <p className="text-white/70 leading-relaxed">
+                  Tracks seismic vibrations; sprinting alerts it immediately. However, high-pressure boiler valves cycle every 24 seconds, releasing blinding steam clouds that scramble optical sensors. Use the steam purge window to sprint across central pipe junctions!
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-1.5">
+                <div className="text-violet-400 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>9. The Resonance Static (The Final Threshold)</span>
+                  <span className="text-[10px] text-violet-300 font-bold px-2 py-0.5 rounded bg-violet-400/10 border border-violet-400/30">TWIST: DIMENSIONAL GLITCH TEARS</span>
+                </div>
+                <p className="text-white/70 leading-relaxed">
+                  Space-time tears open every 18 seconds, phasing entities between dimensions and scrambling reality. Coordinate harmonic resonance frequencies at the central Altar while entities are phased out to escape the liminal backrooms once and for all!
                 </p>
               </div>
             </div>
@@ -266,6 +316,14 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
                       {st.subtitle} &bull; Difficulty:{' '}
                       <span className="text-yellow-400 font-bold">{st.difficultyLabel}</span>
                     </div>
+                    {st.twistTitle && (
+                      <div className="text-[10px] text-amber-400/90 font-mono mt-1 flex items-center gap-1.5">
+                        <span className="bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.2 rounded border border-amber-500/30 uppercase">
+                          TWIST
+                        </span>
+                        <span>{st.twistTitle}</span>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => {

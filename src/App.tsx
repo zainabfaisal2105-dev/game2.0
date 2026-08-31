@@ -118,6 +118,40 @@ export default function App() {
   const lastTimeRef = useRef<number>(performance.now());
   const lastHudSyncRef = useRef<number>(0);
 
+  // Stage-specific twist event states
+  const twistEventRef = useRef<{
+    stageId: number;
+    timer: number;
+    eventActive: boolean;
+    eventDuration: number;
+    warningGiven: boolean;
+    type: 'none' | 'brownout' | 'bell_sweep' | 'phone_ring' | 'steam_purge' | 'reality_glitch';
+    phonePos: { x: number; y: number; cubicleName: string } | null;
+    decoyPos: { x: number; y: number; timer: number } | null;
+    ecgTimer: number;
+    mannequinStepTimer: number;
+    hotelTranslocationTimer: number;
+  }>({
+    stageId: -1,
+    timer: 0,
+    eventActive: false,
+    eventDuration: 0,
+    warningGiven: false,
+    type: 'none',
+    phonePos: null,
+    decoyPos: null,
+    ecgTimer: 0,
+    mannequinStepTimer: 0,
+    hotelTranslocationTimer: 0,
+  });
+
+  const [twistBanner, setTwistBanner] = useState<{
+    active: boolean;
+    type: string;
+    title: string;
+    message: string;
+  }>({ active: false, type: 'none', title: '', message: '' });
+
   const modalsOpenRef = useRef<boolean>(false);
   modalsOpenRef.current = isPuzzleOpen || !!activeNote || isPauseOpen || isGameOver || isStageWon;
 
@@ -198,6 +232,21 @@ export default function App() {
     setActiveNote(null);
     setElapsedTime(0);
 
+    twistEventRef.current = {
+      stageId: targetStage.id,
+      timer: 0,
+      eventActive: false,
+      eventDuration: 0,
+      warningGiven: false,
+      type: 'none',
+      phonePos: null,
+      decoyPos: null,
+      ecgTimer: 0,
+      mannequinStepTimer: 0,
+      hotelTranslocationTimer: 0,
+    };
+    setTwistBanner({ active: false, type: 'none', title: '', message: '' });
+
     soundEngine.setAmbientHumIntensity(targetStage.lighting.ambientIntensity);
   }, []);
 
@@ -234,6 +283,39 @@ export default function App() {
     setWorldItems([...worldItemsRef.current]);
 
     const p = playerRef.current;
+
+    // Stage 5 Twist: Answering ringing office phone lures the Dilapidated Manager
+    if (it.id === 'desk_phone') {
+      soundEngine.playPhonePickup();
+      soundEngine.playEntityAlert(5);
+      const phonePos = twistEventRef.current.phonePos;
+      if (phonePos) {
+        const ents = entitiesRef.current;
+        for (const e of ents) {
+          if (e.type === 'stalker' || e.name.toLowerCase().includes('manager')) {
+            e.lastSeenX = phonePos.x;
+            e.lastSeenY = phonePos.y;
+            e.state = 'chase';
+            e.searchTimer = 12.0; // 12 seconds investigating the cubicle
+          }
+        }
+      }
+      twistEventRef.current.phonePos = null;
+      twistEventRef.current.eventActive = false;
+      setTwistBanner({
+        active: true,
+        type: 'phone_lured',
+        title: 'MANAGER LURED TO DESK PHONE',
+        message: 'The Manager is investigating the ringing phone! Server Room corridor is clear for 12 seconds!',
+      });
+      setTimeout(() => {
+        setTwistBanner((b) => (b.type === 'phone_lured' ? { ...b, active: false } : b));
+      }, 4500);
+      interactionTargetRef.current = { type: 'none' };
+      setInteractionTarget({ type: 'none' });
+      return;
+    }
+
     if (it.type === 'battery') {
       p.inventory.batteries += 1;
     } else if (it.type === 'fuse') {
@@ -295,6 +377,23 @@ export default function App() {
   // Flashlight toggle helper
   const toggleFlashlight = useCallback(() => {
     const p = playerRef.current;
+
+    // Stage 1 Twist: Crouched sonar splash ripple decoy
+    if (stageRef.current.theme === 'poolrooms' && p.isCrouching) {
+      soundEngine.playSonarDistraction();
+      twistEventRef.current.decoyPos = { x: p.x, y: p.y, timer: 7.0 };
+      setTwistBanner({
+        active: true,
+        type: 'decoy',
+        title: 'ACOUSTIC SPLASH RIPPLE CREATED',
+        message: 'The Murmur Hound is tracking your water ripple! Crouch and wade away silently.',
+      });
+      setTimeout(() => {
+        setTwistBanner((b) => (b.type === 'decoy' ? { ...b, active: false } : b));
+      }, 4500);
+      return;
+    }
+
     p.isFlashlightOn = !p.isFlashlightOn;
     soundEngine.playFlashlightClick(p.isFlashlightOn);
     setPlayer({ ...p });
@@ -685,6 +784,217 @@ export default function App() {
         p.isCrouching = isCrouching;
         p.isMoving = isMoving;
 
+        // --- 1B. STAGE TWIST PERIODIC EVENT SYSTEM ---
+        const twist = twistEventRef.current;
+        if (twist.stageId !== curStage.id) {
+          twist.stageId = curStage.id;
+          twist.timer = 0;
+          twist.eventActive = false;
+          twist.eventDuration = 0;
+          twist.warningGiven = false;
+          twist.type = 'none';
+          twist.phonePos = null;
+          twist.decoyPos = null;
+          twist.ecgTimer = 0;
+          twist.mannequinStepTimer = 0;
+          twist.hotelTranslocationTimer = 0;
+        }
+
+        // Handle active decoy timer (Stage 1 Poolrooms)
+        if (twist.decoyPos) {
+          twist.decoyPos.timer -= dt;
+          if (twist.decoyPos.timer <= 0) {
+            twist.decoyPos = null;
+          }
+        }
+
+        // Stage 2: Galleria Mall (Generator Brownouts)
+        if (curStage.theme === 'mall') {
+          twist.timer += dt;
+          if (twist.timer >= 19.5 && !twist.warningGiven) {
+            twist.warningGiven = true;
+            soundEngine.playTransformerBuzz();
+            setTwistBanner({
+              active: true,
+              type: 'brownout_warn',
+              title: 'GENERATOR TRANSFORMER SURGE',
+              message: 'Power grid fluctuating! Brownout imminent—maintain visual line on Mannequin!',
+            });
+          }
+          if (twist.timer >= 22.0) {
+            twist.timer = 0;
+            twist.warningGiven = false;
+            twist.eventActive = true;
+            twist.eventDuration = 2.6; // 2.6s blackout
+            twist.type = 'brownout';
+            soundEngine.playTransformerBuzz();
+            setTwistBanner({
+              active: true,
+              type: 'brownout',
+              title: '!! POWER BROWNOUT ACTIVE !!',
+              message: 'LIGHTS OUT! The Mannequin moves freely in the dark!',
+            });
+          }
+          if (twist.eventActive && twist.type === 'brownout') {
+            twist.eventDuration -= dt;
+            if (twist.eventDuration <= 0) {
+              twist.eventActive = false;
+              setTwistBanner((b) => (b.type === 'brownout' ? { ...b, active: false } : b));
+            }
+          }
+        }
+
+        // Stage 4: Vintage School (PA Bell Sweep)
+        if (curStage.theme === 'school') {
+          twist.timer += dt;
+          if (twist.timer >= 25.5 && !twist.warningGiven) {
+            twist.warningGiven = true;
+            soundEngine.playBellRinging();
+            setTwistBanner({
+              active: true,
+              type: 'bell_warn',
+              title: 'PA CHIME RINGING',
+              message: 'School bell tolling! Seek shelter in a classroom alcove immediately!',
+            });
+          }
+          if (twist.timer >= 28.0) {
+            twist.timer = 0;
+            twist.warningGiven = false;
+            twist.eventActive = true;
+            twist.eventDuration = 6.0; // 6-second sweep
+            twist.type = 'bell_sweep';
+            setTwistBanner({
+              active: true,
+              type: 'bell_sweep',
+              title: '!! HALLWAY SWEEP IN PROGRESS !!',
+              message: 'The Hall Monitor is sweeping the central corridors! Stay inside classroom alcoves!',
+            });
+          }
+          if (twist.eventActive && twist.type === 'bell_sweep') {
+            twist.eventDuration -= dt;
+            if (twist.eventDuration <= 0) {
+              twist.eventActive = false;
+              setTwistBanner((b) => (b.type === 'bell_sweep' ? { ...b, active: false } : b));
+            }
+          }
+        }
+
+        // Stage 5: Corporate Office (Ringing Desk Telephones)
+        if (curStage.theme === 'office') {
+          twist.timer += dt;
+          if (twist.timer >= 22.0 && !twist.phonePos) {
+            twist.timer = 0;
+            const cubicles = [
+              { x: 1.5, y: 11.5, cubicleName: 'Cubicle Bay C' },
+              { x: 14.5, y: 1.5, cubicleName: 'Cubicle Bay A' },
+              { x: 5.5, y: 5.5, cubicleName: 'Accounting Desk 4' },
+            ];
+            const chosen = cubicles[Math.floor(Math.random() * cubicles.length)];
+            twist.phonePos = chosen;
+            twist.eventActive = true;
+            twist.type = 'phone_ring';
+            soundEngine.playTelephoneRing();
+            setTwistBanner({
+              active: true,
+              type: 'phone',
+              title: 'DESK PHONE RINGING',
+              message: `Rotary phone ringing at ${chosen.cubicleName}! Approach and press [E] to lure the Manager away!`,
+            });
+          }
+        }
+
+        // Stage 6: Hotel (Door Translocation)
+        if (curStage.theme === 'hotel') {
+          twist.hotelTranslocationTimer += dt;
+          if (twist.hotelTranslocationTimer >= 22.0) {
+            twist.hotelTranslocationTimer = 0;
+            soundEngine.playElevatorDing();
+            const ents = entitiesRef.current;
+            for (const e of ents) {
+              if (e.type === 'shade' || e.name.toLowerCase().includes('concierge')) {
+                if (e.x < 8) {
+                  e.x = 12.5;
+                  e.y = 3.5;
+                } else {
+                  e.x = 3.5;
+                  e.y = 12.5;
+                }
+              }
+            }
+            setTwistBanner({
+              active: true,
+              type: 'translocation',
+              title: 'BRASS ELEVATOR CHIME // TRANSLOCATION',
+              message: 'The Concierge stepped through Room 404 and materialized in another wing!',
+            });
+            setTimeout(() => {
+              setTwistBanner((b) => (b.type === 'translocation' ? { ...b, active: false } : b));
+            }, 4500);
+          }
+        }
+
+        // Stage 7: Steam Conduit Tunnels (Steam Purge Cycles)
+        if (curStage.theme === 'tunnels') {
+          twist.timer += dt;
+          if (twist.timer >= 24.0) {
+            twist.timer = 0;
+            twist.eventActive = true;
+            twist.eventDuration = 5.5; // 5.5s steam cloud
+            twist.type = 'steam_purge';
+            soundEngine.playSteamHiss();
+            setTwistBanner({
+              active: true,
+              type: 'steam',
+              title: '!! BOILER STEAM PURGE ACTIVE !!',
+              message: 'High-pressure steam filling conduits! Entity optical sensors blinded—sprint across intersections!',
+            });
+          }
+          if (twist.eventActive && twist.type === 'steam_purge') {
+            twist.eventDuration -= dt;
+            if (twist.eventDuration <= 0) {
+              twist.eventActive = false;
+              setTwistBanner((b) => (b.type === 'steam' ? { ...b, active: false } : b));
+            }
+          }
+        }
+
+        // Stage 8: Non-Euclidean Void (Dimensional Glitch Tears)
+        if (curStage.theme === 'void') {
+          twist.timer += dt;
+          if (twist.timer >= 18.0) {
+            twist.timer = 0;
+            twist.eventActive = true;
+            twist.eventDuration = 3.6; // 3.6s glitch tear
+            twist.type = 'reality_glitch';
+            soundEngine.playGlitchTear();
+            const ents = entitiesRef.current;
+            for (const e of ents) {
+              if (e.type === 'glitch' || e.name.toLowerCase().includes('resonance')) {
+                e.invisPhased = true;
+                e.x = 2.5 + Math.random() * 11;
+                e.y = 2.5 + Math.random() * 11;
+              }
+            }
+            setTwistBanner({
+              active: true,
+              type: 'glitch',
+              title: '!! DIMENSIONAL GLITCH SURGE !!',
+              message: 'Space-time collapsing! Entities phasing through reality—synchronize the Altar to break free!',
+            });
+          }
+          if (twist.eventActive && twist.type === 'reality_glitch') {
+            twist.eventDuration -= dt;
+            if (twist.eventDuration <= 0) {
+              twist.eventActive = false;
+              const ents = entitiesRef.current;
+              for (const e of ents) {
+                e.invisPhased = false;
+              }
+              setTwistBanner((b) => (b.type === 'glitch' ? { ...b, active: false } : b));
+            }
+          }
+        }
+
         // --- 2. ENTITY AI TICK ---
         const entitiesList = entitiesRef.current;
         for (let i = 0; i < entitiesList.length; i++) {
@@ -694,9 +1004,12 @@ export default function App() {
           let nextY = ent.y;
           let nextIdx = ent.currentPatrolIdx;
           let nextStun = Math.max(0, ent.stunTimer - dt);
+          let stunCooldown = Math.max(0, (ent.stunCooldown ?? 0) - dt);
           let searchTime = ent.searchTimer ?? 0;
+          let patrolTimer = (ent.patrolTimer ?? 0) + dt;
           let lastX = ent.lastSeenX;
           let lastY = ent.lastSeenY;
+          let enraged = ent.enraged ?? false;
 
           const edx = p.x - ent.x;
           const edy = p.y - ent.y;
@@ -706,50 +1019,125 @@ export default function App() {
           const angleToEnt = Math.atan2(-edy, -edx);
           let angleDiff = Math.abs(p.angle - angleToEnt);
           while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          const isPlayerLooking = Math.abs(angleDiff) < 0.45;
+          const isPlayerLooking = Math.abs(angleDiff) < 0.55;
 
           const hasLineOfSight = checkLineOfSight(ent.x, ent.y, p.x, p.y, curStage);
 
-          if (
+          // Flashlight interaction mechanics:
+          const isIlluminated =
             isPlayerLooking &&
             hasLineOfSight &&
             p.isFlashlightOn &&
             p.flashlightBattery > 0 &&
-            distToPlayer < 6.5
-          ) {
-            if (ent.type === 'smiler') {
-              nextStun = Math.max(nextStun, 1.8);
-              nextState = 'stunned';
-              // Note mechanic: "Turn flashlight toward it and back away slowly. It retreats from direct illumination."
-              const awayX = ent.x - p.x;
-              const awayY = ent.y - p.y;
-              const awayLen = Math.hypot(awayX, awayY) || 1;
-              const pushed = moveEntityWithSliding(
-                ent.x,
-                ent.y,
-                ent.x + (awayX / awayLen) * 2,
-                ent.y + (awayY / awayLen) * 2,
-                0.022,
-                dt,
-                curStage
-              );
-              nextX = pushed.x;
-              nextY = pushed.y;
-            }
+            distToPlayer < (curStage.lighting.flashlightRange ?? 7.5);
+
+          // === STAGE-SPECIFIC TWIST AI MECHANICS ===
+
+          // 1. Stage 0 (Smiler): Flashlight stuns and forces retreat into open corridors
+          if (ent.type === 'smiler' && isIlluminated && stunCooldown <= 0) {
+            nextStun = 1.4;
+            stunCooldown = 2.4;
+            nextState = 'stunned';
+            soundEngine.playEntityAlert(distToPlayer);
           }
 
-          const effectiveHearing =
-            p.isSprinting
+          // 2. Stage 1 (Poolrooms Murmur Hound): COMPLETELY BLIND!
+          let isBlind = false;
+          let effectiveHearing = ent.hearingDistance;
+
+          if (curStage.theme === 'poolrooms' || ent.type === 'hound') {
+            isBlind = true; // Hound has no eyes
+            effectiveHearing = p.isSprinting ? 13.0 : p.isCrouching ? 1.0 : 4.8;
+          } else if (curStage.theme === 'tunnels' || ent.type === 'stalker') {
+            effectiveHearing = p.isSprinting ? 13.0 : 3.0;
+          } else {
+            effectiveHearing = p.isSprinting
               ? ent.hearingDistance * 1.5
               : p.isCrouching
               ? ent.hearingDistance * 0.35
               : ent.hearingDistance * 0.85;
+          }
 
+          // 3. Stage 2 (Mannequin): Quantum observation
+          const isBrownoutActive = twist.eventActive && twist.type === 'brownout';
+          if (ent.type === 'mannequin') {
+            if (isPlayerLooking && hasLineOfSight && !isBrownoutActive) {
+              nextStun = 0.5;
+              nextState = 'stunned';
+            }
+          }
+
+          // 4. Stage 3 (Orderly): Photophobic Rage (Reverse-Smiler)
+          if (ent.type === 'orderly') {
+            if (isIlluminated) {
+              if (!enraged) {
+                enraged = true;
+                soundEngine.playOrderlyShriek();
+                setTwistBanner({
+                  active: true,
+                  type: 'rage',
+                  title: '!! FLASHLIGHT DETECTED - ORDERLY ENRAGED !!',
+                  message: 'Extinguish flashlight [F] immediately and break line of sight!',
+                });
+              }
+            } else if (!p.isFlashlightOn) {
+              if (enraged && distToPlayer > 3.5) {
+                enraged = false;
+              }
+            }
+
+            twist.ecgTimer -= dt;
+            if (distToPlayer < 9.0 && twist.ecgTimer <= 0) {
+              soundEngine.playHospitalHeartMonitorBeep(distToPlayer);
+              twist.ecgTimer = Math.max(0.22, (distToPlayer / 9.0) * 0.95);
+            }
+          }
+
+          // 5. Stage 6 (Concierge): Amber Lantern Gaze Sanity Drain
+          if (curStage.theme === 'hotel' && (ent.type === 'shade' || ent.name.toLowerCase().includes('concierge'))) {
+            if (isPlayerLooking && hasLineOfSight && distToPlayer < 7.5) {
+              p.dread = Math.min(100, p.dread + 24 * dt);
+              soundEngine.playWhispers();
+              setTwistBanner({
+                active: true,
+                type: 'gaze',
+                title: '!! AVERT YOUR GAZE !!',
+                message: 'Amber lantern light is collapsing your sanity! Look away at the floor!',
+              });
+            }
+          }
+
+          // 6. Stage 7 (Steam Purge Blinds Optical Sensors)
+          const isSteamPurgeActive = twist.eventActive && twist.type === 'steam_purge';
+
+          // Sight & Hearing detection resolution
           const canHear = p.isMoving && distToPlayer < effectiveHearing;
-          const canSee = distToPlayer < ent.detectionDistance && hasLineOfSight;
+          const detectionRange = (ent.type === 'orderly' && !p.isFlashlightOn) ? 2.8 : ent.detectionDistance;
+          const canSee = !isBlind && !isSteamPurgeActive && distToPlayer < detectionRange && hasLineOfSight;
 
-          if (nextStun <= 0) {
-            if (canHear || canSee) {
+          let targetX = ent.x;
+          let targetY = ent.y;
+          let moveSpeed = ent.speed;
+
+          if (nextStun > 0 && !isBrownoutActive) {
+            if (ent.type === 'smiler') {
+              const awayX = ent.x - p.x;
+              const awayY = ent.y - p.y;
+              const awayLen = Math.hypot(awayX, awayY) || 1;
+              targetX = ent.x + (awayX / awayLen) * 3;
+              targetY = ent.y + (awayY / awayLen) * 3;
+              moveSpeed = ent.speed * 1.4;
+            } else {
+              moveSpeed = 0;
+            }
+          } else {
+            // Check Stage 1 decoy lure
+            if (twist.decoyPos && twist.decoyPos.timer > 0 && (curStage.theme === 'poolrooms' || ent.type === 'hound')) {
+              targetX = twist.decoyPos.x;
+              targetY = twist.decoyPos.y;
+              nextState = 'searching';
+              moveSpeed = ent.speed * 1.1;
+            } else if (canHear || canSee || (ent.type === 'orderly' && enraged)) {
               if (nextState !== 'chase') {
                 soundEngine.playEntityAlert(distToPlayer);
               }
@@ -758,18 +1146,27 @@ export default function App() {
               lastY = p.y;
               searchTime = 3.5;
             } else if (nextState === 'chase') {
-              // Lost line of sight and cannot hear -> search last known location
               nextState = 'searching';
             }
-
-            let targetX = ent.x;
-            let targetY = ent.y;
-            let moveSpeed = ent.speed;
 
             if (nextState === 'chase') {
               targetX = p.x;
               targetY = p.y;
-              moveSpeed = ent.chaseSpeed;
+              moveSpeed = (ent.type === 'orderly' && enraged)
+                ? 0.080
+                : (ent.type === 'mannequin')
+                ? 0.082
+                : (twist.eventActive && twist.type === 'bell_sweep')
+                ? 0.084
+                : ent.chaseSpeed;
+
+              if (ent.type === 'mannequin') {
+                twist.mannequinStepTimer += dt;
+                if (twist.mannequinStepTimer > 0.35) {
+                  soundEngine.playMannequinStep();
+                  twist.mannequinStepTimer = 0;
+                }
+              }
             } else if (nextState === 'searching') {
               searchTime -= dt;
               if (lastX !== undefined && lastY !== undefined) {
@@ -778,8 +1175,8 @@ export default function App() {
                 moveSpeed = ent.speed * 1.15;
                 const distToLastSeen = Math.hypot(lastX - ent.x, lastY - ent.y);
                 if (distToLastSeen < 0.6 || searchTime <= 0) {
-                  // Lost target -> resume patrol smoothly at closest waypoint
                   nextState = 'patrol';
+                  patrolTimer = 0;
                   if (ent.patrolPoints.length > 0) {
                     let bestIdx = 0;
                     let bestD = Infinity;
@@ -795,6 +1192,7 @@ export default function App() {
                 }
               } else {
                 nextState = 'patrol';
+                patrolTimer = 0;
               }
             } else if (nextState === 'patrol' && ent.patrolPoints.length > 0) {
               const targetNode = ent.patrolPoints[nextIdx];
@@ -802,12 +1200,14 @@ export default function App() {
               targetY = targetNode.y;
 
               const nodeDist = Math.hypot(targetNode.x - ent.x, targetNode.y - ent.y);
-              if (nodeDist < 0.45) {
+              if (nodeDist < 0.65 || patrolTimer > 4.5) {
                 nextIdx = (nextIdx + 1) % ent.patrolPoints.length;
+                patrolTimer = 0;
               }
             }
+          }
 
-            // Pathfinding: Navigate through corridors avoiding walls and turning corners smoothly
+          if (moveSpeed > 0) {
             const wp = getNextNavWaypoint(ent.x, ent.y, targetX, targetY, curStage);
             const moved = moveEntityWithSliding(
               ent.x,
@@ -820,33 +1220,57 @@ export default function App() {
             );
             nextX = moved.x;
             nextY = moved.y;
+          }
 
-            // Check if captured player!
-            if (distToPlayer <= ent.attackDistance) {
-              soundEngine.playJumpscare();
-              setCaughtByEntity({ ...ent });
-              setIsGameOver(true);
-            }
+          // Check capture! If entity is phased (Stage 8), it cannot capture player.
+          if (distToPlayer <= ent.attackDistance && nextStun <= 0 && !ent.invisPhased) {
+            soundEngine.playJumpscare();
+            setCaughtByEntity({ ...ent });
+            setIsGameOver(true);
           }
 
           ent.x = nextX;
           ent.y = nextY;
           ent.state = nextState;
           ent.stunTimer = nextStun;
+          ent.stunCooldown = stunCooldown;
           ent.currentPatrolIdx = nextIdx;
+          ent.patrolTimer = patrolTimer;
           ent.lastSeenX = lastX;
           ent.lastSeenY = lastY;
           ent.searchTimer = searchTime;
+          ent.enraged = enraged;
           ent.animationTick += 1;
         }
 
         // --- 3. CHECK INTERACTION RETICLE ---
-        const target = raycasterEngine.checkInteractionTarget(
+        let target = raycasterEngine.checkInteractionTarget(
           p,
           curStage,
           worldItemsRef.current,
           doorUnlockedRef.current
         );
+
+        // Stage 5 Twist: check ringing desk phone proximity
+        if (twist.phonePos && curStage.theme === 'office') {
+          const ph = twist.phonePos;
+          const pDist = Math.hypot(p.x - ph.x, p.y - ph.y);
+          if (pDist <= 2.2) {
+            target = {
+              type: 'item',
+              distance: pDist,
+              item: {
+                id: 'desk_phone',
+                type: 'note',
+                name: `Ringing Desk Phone (${ph.cubicleName})`,
+                x: ph.x,
+                y: ph.y,
+                collected: false,
+                color: '#f59e0b',
+              },
+            };
+          }
+        }
 
         const lastTarget = interactionTargetRef.current;
         interactionTargetRef.current = target;
@@ -882,8 +1306,12 @@ export default function App() {
         const ctx = canvas.getContext('2d', { alpha: false });
         if (ctx) {
           const flickerChance = Math.random();
-          const flickerFactor =
-            flickerChance < curStage.lighting.lightFlickerRate ? 0.35 + Math.random() * 0.3 : 1.0;
+          const isBrownout = twistEventRef.current.eventActive && twistEventRef.current.type === 'brownout';
+          const flickerFactor = isBrownout
+            ? 0.03
+            : flickerChance < curStage.lighting.lightFlickerRate
+            ? 0.35 + Math.random() * 0.3
+            : 1.0;
 
           raycasterEngine.render(
             ctx,
@@ -896,6 +1324,22 @@ export default function App() {
             doorUnlockedRef.current,
             flickerFactor
           );
+
+          // Post-processing overlays for stage twists
+          if (isBrownout) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          } else if (twistEventRef.current.eventActive && twistEventRef.current.type === 'steam_purge') {
+            // Drifting steam haze overlay
+            ctx.fillStyle = 'rgba(215, 225, 235, 0.35)';
+            ctx.fillRect(0, canvas.height * 0.4, canvas.width, canvas.height * 0.6);
+          } else if (twistEventRef.current.eventActive && twistEventRef.current.type === 'reality_glitch') {
+            // Reality glitch tear chromatic scanlines
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.15)';
+            for (let gl = 0; gl < canvas.height; gl += 6) {
+              ctx.fillRect(0, gl, canvas.width, 2);
+            }
+          }
         }
       }
 
@@ -995,6 +1439,7 @@ export default function App() {
         isMouseLocked={isMouseLocked}
         onToggleMouseLock={toggleMouseLock}
         onInteract={triggerInteraction}
+        twistBanner={twistBanner}
       />
 
       {/* Mobile Touch Controls */}

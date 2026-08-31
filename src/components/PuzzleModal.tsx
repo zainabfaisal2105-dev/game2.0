@@ -411,15 +411,17 @@ const HotelKeypadView: React.FC<{
     <div className="space-y-5">
       <div className="bg-black/60 backdrop-blur-xl border-l-2 border-rose-500/50 border-y border-r border-white/10 p-4 rounded-r-xl text-xs flex items-center justify-between text-white/80">
         <div>
-          <div className="font-bold text-rose-400 font-mono">CORRIDOR 404 ELEVATOR KEYPAD</div>
-          <div className="text-[11px] text-white/50">Clue: Front Desk memo references recorded voicemail numbers.</div>
+          <div className="font-bold text-rose-400 font-mono">DIGITAL OVERRIDE KEYPAD</div>
+          <div className="text-[11px] text-white/50">{state.clueHint || 'Enter 4-digit security passkey from found memo.'}</div>
         </div>
-        <button
-          onClick={playPhoneClue}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-rose-300 border border-rose-500/40 text-xs font-mono rounded-xl transition-all cursor-pointer shadow-[0_0_10px_rgba(244,63,94,0.15)]"
-        >
-          <PhoneCall className="w-3.5 h-3.5" /> LISTEN LOG
-        </button>
+        {state.clueHint?.includes('voicemail') && (
+          <button
+            onClick={playPhoneClue}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-rose-300 border border-rose-500/40 text-xs font-mono rounded-xl transition-all cursor-pointer shadow-[0_0_10px_rgba(244,63,94,0.15)]"
+          >
+            <PhoneCall className="w-3.5 h-3.5" /> LISTEN LOG
+          </button>
+        )}
       </div>
 
       {/* Phosphor Sleek Display */}

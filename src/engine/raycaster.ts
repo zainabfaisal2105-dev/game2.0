@@ -166,11 +166,33 @@ export class RaycasterEngine {
         texName = 'wall_terminal';
       } else {
         switch (stage.theme) {
-          case 'poolrooms': texName = 'wall_pool'; break;
-          case 'hotel': texName = 'wall_hotel'; break;
-          case 'tunnels': texName = 'wall_tunnels'; break;
-          case 'void': texName = 'wall_void'; break;
-          default: texName = 'wall_backrooms'; break;
+          case 'poolrooms':
+            texName = 'wall_pool';
+            break;
+          case 'mall':
+            texName = (mapX + mapY) % 3 === 0 ? 'wall_mall_neon' : 'wall_mall';
+            break;
+          case 'hospital':
+            texName = (mapX * 3 + mapY * 7) % 5 === 0 ? 'wall_hospital_door' : 'wall_hospital';
+            break;
+          case 'school':
+            texName = (mapX + mapY) % 2 === 0 ? 'wall_school_locker' : 'wall_school';
+            break;
+          case 'office':
+            texName = (mapX + mapY) % 3 === 0 ? 'wall_office_cubicle' : 'wall_office';
+            break;
+          case 'hotel':
+            texName = 'wall_hotel';
+            break;
+          case 'tunnels':
+            texName = 'wall_tunnels';
+            break;
+          case 'void':
+            texName = 'wall_void';
+            break;
+          default:
+            texName = 'wall_backrooms';
+            break;
         }
       }
 
@@ -185,7 +207,7 @@ export class RaycasterEngine {
       );
 
       // Render vertical slice
-      this.renderWallSlice(ctx, x, drawStart, drawEnd, lineHeight, wallX, texName, side, lightFactor);
+      this.renderWallSlice(ctx, x, drawStart, drawEnd, lineHeight, horizon, height, wallX, texName, side, lightFactor);
     }
 
     // --- 3. RENDER 2.5D BILLBOARD SPRITES (Entities & Items) ---
@@ -193,7 +215,7 @@ export class RaycasterEngine {
   }
 
   /**
-   * Renders shaded ceiling and floor with distance fog
+   * Renders shaded ceiling and floor with distance fog and atmospheric patterns
    */
   private renderCeilingAndFloor(
     ctx: CanvasRenderingContext2D,
@@ -204,17 +226,41 @@ export class RaycasterEngine {
     player: PlayerState,
     flickerFactor: number
   ) {
-    // Ceiling colors per theme
-    let ceilTop = '#111';
-    let ceilBottom = '#2a2822';
-    let floorTop = '#221f15';
-    let floorBottom = '#615433';
+    // Default: Backrooms (damp acoustic tiles ceiling, damp yellow-brown carpet floor)
+    let ceilTop = '#11100c';
+    let ceilBottom = '#2d281f';
+    let floorTop = '#221d12';
+    let floorBottom = '#5c4b28';
 
     if (stage.theme === 'poolrooms') {
-      ceilTop = '#0a1a24';
-      ceilBottom = '#1d3f4a';
-      floorTop = '#0c2e36';
-      floorBottom = '#1a5f6e';
+      ceilTop = '#081720';
+      ceilBottom = '#153945';
+      floorTop = '#0a2730';
+      floorBottom = '#125866';
+    } else if (stage.theme === 'mall') {
+      // 90s Mall Atrium: dark purple twilight skylight overhead, glossy checkerboard marble floor
+      ceilTop = '#0d0a17';
+      ceilBottom = '#21182c';
+      floorTop = '#101117';
+      floorBottom = '#262933';
+    } else if (stage.theme === 'hospital') {
+      // Sterile Hospital: cold mint clinical drop ceiling, waxed institutional linoleum
+      ceilTop = '#0a1412';
+      ceilBottom = '#1c2c28';
+      floorTop = '#0e1622';
+      floorBottom = '#263445';
+    } else if (stage.theme === 'school') {
+      // 90s School: suspended industrial light fixture ceiling, warm polished parquet floor
+      ceilTop = '#14120e';
+      ceilBottom = '#29231a';
+      floorTop = '#1f140b';
+      floorBottom = '#4a2f1a';
+    } else if (stage.theme === 'office') {
+      // Infinite Office: acoustical drop-ceiling, low-pile blue-gray corporate carpet tile grid
+      ceilTop = '#141310';
+      ceilBottom = '#2b271f';
+      floorTop = '#131822';
+      floorBottom = '#263042';
     } else if (stage.theme === 'hotel') {
       ceilTop = '#0e0a0d';
       ceilBottom = '#21151a';
@@ -246,6 +292,93 @@ export class RaycasterEngine {
     ctx.fillStyle = floorGrad;
     ctx.fillRect(0, horizon, width, height - horizon);
 
+    // Atmospheric ceiling details
+    if (stage.theme === 'backrooms') {
+      // Recessed fluorescent tube fixture rows in the drop ceiling
+      ctx.fillStyle = `rgba(255, 252, 220, ${0.06 * flickerFactor})`;
+      for (let y = Math.floor(horizon * 0.2); y < horizon; y += Math.floor(horizon * 0.25)) {
+        ctx.fillRect(width * 0.35, y, width * 0.3, Math.max(2, (horizon - y) * 0.08));
+      }
+    } else if (stage.theme === 'office') {
+      // Fluorescent troffer ceiling fixtures
+      ctx.fillStyle = `rgba(240, 245, 255, ${0.05 * flickerFactor})`;
+      for (let y = Math.floor(horizon * 0.15); y < horizon; y += Math.floor(horizon * 0.25)) {
+        ctx.fillRect(width * 0.25, y, width * 0.5, Math.max(2, (horizon - y) * 0.07));
+      }
+    } else if (stage.theme === 'mall') {
+      // 90s Mall geometric atrium skylight trusses
+      ctx.strokeStyle = 'rgba(230, 200, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += Math.floor(width / 6)) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(width / 2, horizon);
+        ctx.stroke();
+      }
+    }
+
+    // Atmospheric floor patterns
+    if (stage.theme === 'poolrooms') {
+      // Dynamic animated water caustics across the submerged pool floor
+      const time = Date.now() * 0.0018;
+      ctx.strokeStyle = 'rgba(160, 245, 255, 0.12)';
+      ctx.lineWidth = 2;
+      const floorH = height - horizon;
+      for (let i = 1; i <= 4; i++) {
+        const y = horizon + floorH * (i / 5);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x < width; x += 20) {
+          const wave = Math.sin(x * 0.03 + time + i) * (3 + i * 2);
+          ctx.lineTo(x, y + wave);
+        }
+        ctx.stroke();
+      }
+    } else if (stage.theme === 'hospital') {
+      // Central waxed hospital linoleum triage guide lines (ICU Blue & Trauma Red)
+      const floorH = height - horizon;
+      const startY = horizon;
+      const endY = height;
+      // Perspective triangle narrowing toward horizon
+      ctx.fillStyle = 'rgba(2, 132, 199, 0.18)'; // Blue line
+      ctx.beginPath();
+      ctx.moveTo(width / 2 - 2, startY);
+      ctx.lineTo(width / 2 + 2, startY);
+      ctx.lineTo(width / 2 + 18, endY);
+      ctx.lineTo(width / 2 + 6, endY);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.18)'; // Red line
+      ctx.beginPath();
+      ctx.moveTo(width / 2 - 2, startY);
+      ctx.lineTo(width / 2 - 6, startY);
+      ctx.lineTo(width / 2 - 18, endY);
+      ctx.lineTo(width / 2 - 6, endY);
+      ctx.fill();
+    } else if (stage.theme === 'mall') {
+      // Perspective marble checkerboard lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(width / 2, horizon);
+        ctx.lineTo(width / 2 + i * (width * 0.22), height);
+        ctx.stroke();
+      }
+    } else if (stage.theme === 'school') {
+      // Wood plank seams
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.lineWidth = 1;
+      const floorH = height - horizon;
+      for (let i = 1; i <= 5; i++) {
+        const y = horizon + floorH * Math.pow(i / 5, 1.8);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    }
+
     // Flashlight beam glow cone on the floor
     if (player.isFlashlightOn && player.flashlightBattery > 0) {
       const batteryMult = Math.min(1.0, player.flashlightBattery / 20);
@@ -267,7 +400,7 @@ export class RaycasterEngine {
   }
 
   /**
-   * Fast vertical slice drawing with lighting tint
+   * Fast vertical slice drawing with full vertical texture pattern and distance lighting
    */
   private renderWallSlice(
     ctx: CanvasRenderingContext2D,
@@ -275,6 +408,8 @@ export class RaycasterEngine {
     drawStart: number,
     drawEnd: number,
     lineHeight: number,
+    horizon: number,
+    screenHeight: number,
     wallX: number,
     texName: string,
     side: number,
@@ -292,26 +427,55 @@ export class RaycasterEngine {
     const sliceHeight = drawEnd - drawStart;
     if (sliceHeight <= 0) return;
 
-    // Apply side shading (horizontal walls slightly dimmer for depth)
-    const sideMult = side === 1 ? 0.78 : 1.0;
+    // Apply side shading (horizontal walls slightly dimmer for 3D depth)
+    const sideMult = side === 1 ? 0.82 : 1.0;
     const finalLight = Math.max(0.04, Math.min(1.0, lightFactor * sideMult));
 
-    // Choose base color from texture center or fallback for 1px columns
-    const pIdx = Math.floor(tex.height / 2) * tex.width + texX;
-    const rawPixel = tex.data[pIdx] || 0xff888888;
+    if (tex.canvas) {
+      // Draw hardware-accelerated textured strip with full vertical detail
+      const unclippedTop = horizon - lineHeight / 2;
+      let sy = 0;
+      let sh = tex.height;
+      let dy = unclippedTop;
+      let dh = lineHeight;
 
-    // Extract RGBA from 32-bit uint
-    const r = (rawPixel & 0xff);
-    const g = ((rawPixel >> 8) & 0xff);
-    const b = ((rawPixel >> 16) & 0xff);
+      if (dy < 0) {
+        const topClip = -dy;
+        sy = (topClip / lineHeight) * tex.height;
+        sh = tex.height - sy;
+        dh = lineHeight - topClip;
+        dy = 0;
+      }
+      if (dy + dh > screenHeight) {
+        const bottomClip = dy + dh - screenHeight;
+        sh -= (bottomClip / lineHeight) * tex.height;
+        dh = screenHeight - dy;
+      }
 
-    // Render slice with lighting
-    ctx.fillStyle = `rgb(${Math.floor(r * finalLight)}, ${Math.floor(g * finalLight)}, ${Math.floor(b * finalLight)})`;
-    ctx.fillRect(screenX, drawStart, 1, sliceHeight);
+      if (sh > 0 && dh > 0) {
+        ctx.drawImage(tex.canvas, texX, sy, 1, sh, screenX, dy, 1, dh);
+      }
 
-    // Subtle edge highlight for door / terminal
-    if (texName.startsWith('wall_door') && (wallX < 0.05 || wallX > 0.95)) {
-      ctx.fillStyle = `rgba(20, 20, 20, ${0.6 * finalLight})`;
+      // Distance darkness / fog attenuation overlay
+      if (finalLight < 0.98) {
+        const darkness = Math.max(0, Math.min(1.0, 1.0 - finalLight));
+        ctx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
+        ctx.fillRect(screenX, drawStart, 1, sliceHeight);
+      }
+    } else {
+      // Color fallback if canvas not ready
+      const pIdx = Math.floor(tex.height / 2) * tex.width + texX;
+      const rawPixel = tex.data[pIdx] || 0xff888888;
+      const r = rawPixel & 0xff;
+      const g = (rawPixel >> 8) & 0xff;
+      const b = (rawPixel >> 16) & 0xff;
+      ctx.fillStyle = `rgb(${Math.floor(r * finalLight)}, ${Math.floor(g * finalLight)}, ${Math.floor(b * finalLight)})`;
+      ctx.fillRect(screenX, drawStart, 1, sliceHeight);
+    }
+
+    // Subtle edge highlight for doors & terminals
+    if (texName.startsWith('wall_door') && (wallX < 0.04 || wallX > 0.96)) {
+      ctx.fillStyle = `rgba(10, 10, 15, ${0.7 * finalLight})`;
       ctx.fillRect(screenX, drawStart, 1, sliceHeight);
     }
   }
@@ -387,6 +551,8 @@ export class RaycasterEngine {
       else if (ent.type === 'shade') tex = 'sprite_shade';
       else if (ent.type === 'stalker') tex = 'sprite_stalker';
       else if (ent.type === 'glitch') tex = 'sprite_glitch';
+      else if (ent.type === 'mannequin') tex = 'sprite_mannequin';
+      else if (ent.type === 'orderly') tex = 'sprite_orderly';
 
       sprites.push({
         x: ent.x,
@@ -502,13 +668,20 @@ export class RaycasterEngine {
             const g = ((rawPixel >> 8) & 0xff);
             const b = ((rawPixel >> 16) & 0xff);
 
-            // Stun or alert glow on entity
+            // Stun, rage, or alert glow on entity
             let alertTintR = 1.0;
             let alertTintG = 1.0;
             let alertTintB = 1.0;
 
             if (sp.isEntity && sp.entity) {
-              if (sp.entity.state === 'chase') {
+              if (sp.entity.invisPhased && Math.random() < 0.7) {
+                continue; // Phased out of reality during glitch
+              }
+              if (sp.entity.enraged) {
+                alertTintR = 1.8;
+                alertTintG = 0.4;
+                alertTintB = 0.4;
+              } else if (sp.entity.state === 'chase') {
                 alertTintR = 1.4;
                 alertTintG = 0.8;
                 alertTintB = 0.8;

@@ -26,6 +26,7 @@ import {
   Minimize2,
   Navigation,
   Target,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface HUDProps {
@@ -48,6 +49,13 @@ interface HUDProps {
   isMouseLocked: boolean;
   onToggleMouseLock: () => void;
   onInteract?: () => void;
+  twistBanner?: {
+    active: boolean;
+    type: string;
+    title: string;
+    message: string;
+  };
+  isSonarActive?: boolean;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -66,6 +74,8 @@ export const HUD: React.FC<HUDProps> = ({
   isMouseLocked,
   onToggleMouseLock,
   onInteract,
+  twistBanner,
+  isSonarActive,
 }) => {
   const [timeString, setTimeString] = useState<string>('03:42:15 AM');
   const [recBlink, setRecBlink] = useState<boolean>(true);
@@ -161,6 +171,13 @@ export const HUD: React.FC<HUDProps> = ({
             Coordinates: {(41.8781 + player.x * 0.001).toFixed(4)}° N,{' '}
             {(87.6298 + player.y * 0.001).toFixed(4)}° W // Layer: {stage.subtitle}
           </p>
+
+          {stage.twistTitle && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mt-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-mono tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+              <span>TWIST: {stage.twistTitle}</span>
+            </div>
+          )}
         </div>
 
         {/* Center: Tactical Compass Ribbon with Real-Time Waypoint Tracking */}
@@ -370,6 +387,18 @@ export const HUD: React.FC<HUDProps> = ({
             </p>
           </div>
         )}
+
+        {/* Dynamic Stage Twist Alert Banner */}
+        {twistBanner?.active && (
+          <div className="mt-3 max-w-lg bg-black/90 px-4 py-2.5 rounded-xl border border-rose-500/70 shadow-[0_0_25px_rgba(244,63,94,0.4)] animate-pulse text-center">
+            <p className="text-rose-400 font-mono text-[11px] uppercase tracking-widest font-bold">
+              {twistBanner.title}
+            </p>
+            <p className="text-white/85 font-sans text-xs mt-0.5">
+              {twistBanner.message}
+            </p>
+          </div>
+        )}
       </main>
 
       {/* 6. Bottom Row: Active Objective, Inventory Slots, Anomaly Alert & Radar */}
@@ -414,6 +443,19 @@ export const HUD: React.FC<HUDProps> = ({
                 stage.objective
               )}
             </p>
+
+            {/* Stage Twist Protocol Box */}
+            {stage.twistTitle && (
+              <div className="pt-2 border-t border-white/10 space-y-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider">
+                  <AlertTriangle className="w-3 h-3 text-rose-400" />
+                  <span>{stage.twistTitle}</span>
+                </div>
+                <p className="text-[11px] font-sans text-white/70 leading-snug">
+                  {stage.twistRule}
+                </p>
+              </div>
+            )}
 
             {/* Stage 1 Checklist Tracker */}
             {stage.id === 1 && !doorUnlocked && (

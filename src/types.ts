@@ -2,9 +2,18 @@
  * Liminal Space Escape - Core Game Types
  */
 
-export type StageTheme = 'backrooms' | 'poolrooms' | 'hotel' | 'tunnels' | 'void';
+export type StageTheme =
+  | 'backrooms'
+  | 'poolrooms'
+  | 'mall'
+  | 'hospital'
+  | 'school'
+  | 'office'
+  | 'hotel'
+  | 'tunnels'
+  | 'void';
 
-export type EntityType = 'smiler' | 'hound' | 'shade' | 'stalker' | 'glitch';
+export type EntityType = 'smiler' | 'hound' | 'shade' | 'stalker' | 'glitch' | 'mannequin' | 'orderly';
 
 export type EntityState = 'patrol' | 'idle' | 'chase' | 'searching' | 'stunned';
 
@@ -31,6 +40,11 @@ export interface Entity {
   lastSeenX?: number;
   lastSeenY?: number;
   searchTimer?: number;
+  patrolTimer?: number;
+  stunCooldown?: number;
+  enraged?: boolean;
+  invisPhased?: boolean;
+  teleportTimer?: number;
 }
 
 export type ItemType = 'battery' | 'keycard' | 'fuse' | 'valve_wheel' | 'room_key' | 'note';
@@ -121,6 +135,8 @@ export interface StageConfig {
   theme: StageTheme;
   difficultyLabel: string;
   ambientDreadRate: number;
+  twistTitle?: string;
+  twistRule?: string;
   description: string;
   objective: string;
   mapWidth: number;
